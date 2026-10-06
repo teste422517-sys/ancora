@@ -9,3 +9,4 @@ python-dotenv
 cloudinary
 flask-talisman
 flask-migrate
+cryptography
