@@ -166,52 +166,37 @@ Talisman(app,
 )
 
 # ===================== BASE DE DADOS (NEON) =====================
+# ===================== BASE DE DADOS (NEON) =====================
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Dicionário padrão de opções de engine para garantir estabilidade no Neon PostgreSQL
+engine_options = {}
 
 if DATABASE_URL:
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-            "pool_pre_ping": True,
-            "pool_recycle": 300,
-            "pool_timeout": 30,
-            "connect_args": {
-                "connect_timeout": 20,
-                "keepalives": 1,
-                "keepalives_idle": 30,
-                "keepalives_interval": 10,
-                "keepalives_count": 5,
-            }
+    
+    engine_options = {
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+        "pool_timeout": 30,
+        "connect_args": {
+            "connect_timeout": 20,
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5,
         }
-
+    }
     print("🔗 Usando Neon (PostgreSQL)")
 else:
     DATABASE_URL = "sqlite:///ecommerce.db"
     print("⚠️ DATABASE_URL não encontrada → Usando SQLite local")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = engine_options
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave-secreta-desenvolvimento')
-app.config['UPLOAD_FOLDER'] = os.path.join('static', 'files')
-app.config['MAX_CONTENT_LENGTH'] = 2048 * 1024 * 1024
-
-
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-db.init_app(app)
-migrate = Migrate(app, db)
-socketio.init_app(app)
-
-def setup_database():
-    with app.app_context():
-        try:
-            db.create_all()
-            print("✅ Banco de dados inicializado com sucesso!")
-        except Exception as e:
-            print(f"❌ Erro ao inicializar banco: {e}")
-
-# Executa a inicialização do banco fora do __main__ para funcionar no deploy
-setup_database()
 
 # ===================== REGISTO DOS BLUEPRINTS =====================
 app.register_blueprint(registrar)
