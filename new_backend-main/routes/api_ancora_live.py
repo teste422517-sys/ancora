@@ -1,5 +1,5 @@
 from flask import request, jsonify, Blueprint
-from livekit import api
+from livekit.api import AccessToken, VideoGrants
 import os
 from dotenv import load_dotenv
 
@@ -30,11 +30,11 @@ def get_livekit_token():
                 "error": "roomName e participantName são obrigatórios"
             }), 400
 
-        # Criação do token
-        token = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET) \
+        # Criação do token utilizando as classes importadas diretamente
+        token = AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET) \
             .with_identity(participant_name) \
             .with_name(participant_name) \
-            .with_grants(api.VideoGrants(
+            .with_grants(VideoGrants(
                 room_join=True,
                 room=room_name,
                 can_publish=True,
