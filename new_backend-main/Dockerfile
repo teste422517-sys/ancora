@@ -4,18 +4,17 @@ FROM python:3.12-slim
 # 2. Define o diretório de trabalho dentro do container
 WORKDIR /app
 
-# 3. Copia o arquivo de dependências primeiro (otimiza o cache do Docker)
+# 3. Copia apenas o requirements.txt de dentro da pasta do backend para o container
 COPY new_backend-main/requirements.txt .
 
 # 4. Instala as dependências
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. Copia o restante do código do projeto para dentro do container
-COPY . .
+# 5. Copia todo o conteúdo da pasta do backend para dentro de /app no container
+COPY new_backend-main/ .
 
-# 6. Expõe a porta que o container vai usar (a Northflank vai ler isso)
+# 6. Expõe a porta que o servidor vai usar
 EXPOSE 5000
 
-# 7. Comando para rodar a aplicação (ajuste para o seu arquivo principal)
-# Se usar WebSockets/Socket.IO com Eventlet/Gevent, o Gunicorn gerencia isso bem:
+# 7. Comando para rodar a aplicação Flask com Socket.IO (Eventlet)
 CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "-b", "0.0.0.0:5000", "app:app"]
