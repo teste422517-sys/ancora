@@ -10,3 +10,4 @@ cloudinary
 flask-talisman
 flask-migrate
 cryptography
+PyJWT
