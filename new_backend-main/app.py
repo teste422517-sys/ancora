@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
+from gevent import monkey
+monkey.patch_all()
 from flask import Flask
 from flask_cors import CORS
 from models.database import db
@@ -131,7 +133,7 @@ CORS(app, resources={r"/*": {
         "http://192.168.11.1",
         "http://192.168.11.1:5173",
         "http://10.140.176.115:5173",
-        "https://ancora-ecomercee.netlify.app"
+        "https://ancora-ecommerce.vercel.app"
 
     ],
     "supports_credentials": True,
@@ -144,8 +146,8 @@ CORS(app, resources={r"/*": {
 def after_request(response):
     origin = response.headers.get('Access-Control-Allow-Origin')
     if not origin:
-        response.headers.add('Access-Control-Allow-Origin', 'https://ancora-ecomercee.netlify.app/')
-        #response.headers.add('Access-Control-Allow-Origin', 'http://localhost:5173')
+        # response.headers.add('Access-Control-Allow-Origin', 'https://ancora-ecommerce.vercel.app')
+        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:5173')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
     response.headers.add('Access-Control-Allow-Credentials', 'true')
@@ -164,37 +166,52 @@ Talisman(app,
 )
 
 # ===================== BASE DE DADOS (NEON) =====================
-# ===================== BASE DE DADOS (NEON) =====================
 DATABASE_URL = os.getenv("DATABASE_URL")
-
-# Dicionário padrão de opções de engine para garantir estabilidade no Neon PostgreSQL
-engine_options = {}
 
 if DATABASE_URL:
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-    
-    engine_options = {
-        "pool_pre_ping": True,
-        "pool_recycle": 300,
-        "pool_timeout": 30,
-        "connect_args": {
-            "connect_timeout": 20,
-            "keepalives": 1,
-            "keepalives_idle": 30,
-            "keepalives_interval": 10,
-            "keepalives_count": 5,
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            "pool_pre_ping": True,
+            "pool_recycle": 300,
+            "pool_timeout": 30,
+            "connect_args": {
+                "connect_timeout": 20,
+                "keepalives": 1,
+                "keepalives_idle": 30,
+                "keepalives_interval": 10,
+                "keepalives_count": 5,
+            }
         }
-    }
+
     print("🔗 Usando Neon (PostgreSQL)")
 else:
     DATABASE_URL = "sqlite:///ecommerce.db"
     print("⚠️ DATABASE_URL não encontrada → Usando SQLite local")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = engine_options
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave-secreta-desenvolvimento')
+app.config['UPLOAD_FOLDER'] = os.path.join('static', 'files')
+app.config['MAX_CONTENT_LENGTH'] = 2048 * 1024 * 1024
+
+
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+db.init_app(app)
+migrate = Migrate(app, db)
+socketio.init_app(app)
+
+def setup_database():
+    with app.app_context():
+        try:
+            db.create_all()
+            print("✅ Banco de dados inicializado com sucesso!")
+        except Exception as e:
+            print(f"❌ Erro ao inicializar banco: {e}")
+
+# Executa a inicialização do banco fora do __main__ para funcionar no deploy
+setup_database()
 
 # ===================== REGISTO DOS BLUEPRINTS =====================
 app.register_blueprint(registrar)
